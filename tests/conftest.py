@@ -10,6 +10,11 @@ import pytest
 
 pytest.importorskip("vllm")
 
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "gpu: requires a CUDA device")
+    config.addinivalue_line("markers", "serve: spawns vllm serve in a subprocess")
+
 mp.set_start_method("spawn", force=True)
 os.environ["VLLM_USE_V1"] = "1"
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
@@ -37,6 +42,65 @@ def cache_dir(cache_root: Path, request) -> Path:
     sub = cache_root / request.node.name
     sub.mkdir(parents=True, exist_ok=True)
     return sub
+
+
+@pytest.fixture(scope="session")
+def small_model() -> str:
+    return os.environ.get("VLLM_HOOK_TEST_MODEL", "facebook/opt-125m")
+
+
+@pytest.fixture(scope="session")
+def serve_url(small_model: str, cache_root: Path):
+    """Spawn `vllm serve` in a subprocess, wait for /health, yield base URL."""
+    import socket
+    import subprocess
+    import time
+    import urllib.request
+
+    def _free_port() -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            return s.getsockname()[1]
+
+    port = _free_port()
+    url = f"http://127.0.0.1:{port}"
+
+    proc = subprocess.Popen(
+        [
+            "vllm", "serve", small_model,
+            "--port", str(port),
+            "--host", "127.0.0.1",
+            "--enforce-eager",
+            "--download-dir", str(cache_root),
+            "--gpu-memory-utilization", "0.5",
+        ],
+        env={**os.environ, "VLLM_USE_V1": "1"},
+    )
+
+    deadline = time.monotonic() + 300.0
+    health_url = f"{url}/health"
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            raise RuntimeError(f"vllm serve exited early with code {proc.returncode}")
+        try:
+            with urllib.request.urlopen(health_url, timeout=2.0) as r:
+                if r.status == 200:
+                    break
+        except Exception:
+            time.sleep(1.0)
+    else:
+        proc.terminate()
+        raise TimeoutError("vllm serve did not become healthy within 300s")
+
+    try:
+        yield url
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=30.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
 
 ConfigKind = Literal[

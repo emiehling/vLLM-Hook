@@ -20,6 +20,10 @@ def register_plugins():
     PluginRegistry.register_analyzer("core_reranker",  CorerAnalyzer)
     PluginRegistry.register_analyzer("hidden_states",  HiddenStatesAnalyzer)
 
+    # Patch vLLM engine entry points for per-request activation steering.
+    from vllm_hook_plugins import _steering_plugin
+    _steering_plugin.register()
+
 __all__ = [
     "PluginRegistry",
     "HookLLM",

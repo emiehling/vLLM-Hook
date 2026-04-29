@@ -1,3 +1,17 @@
+"""Legacy one-shot activation steering worker.
+
+Deprecated. Steering through `worker_cls=SteerHookActWorker` substitutes
+the worker class entirely, which prevents composition with `vllm serve`
+and other plugins. The replacement is the per-request path in
+`vllm_hook_plugins._steering_extension.SteeringExtension`, which is
+auto-injected via the package's `vllm.general_plugins` entry point and
+reads steering vectors from `SamplingParams.extra_args` per request.
+
+This module is retained for backwards compatibility with existing
+HookLLM-based scripts and the disk-vector configs under
+`model_configs/activation_steer/`.
+"""
+
 import os
 import json
 import torch

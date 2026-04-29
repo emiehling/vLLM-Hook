@@ -39,35 +39,38 @@ Key takeaways:
 ---
 
 ## 📦 Installation
+
+This project uses [uv](https://docs.astral.sh/uv/) for environment and dependency management. If you don't have uv installed:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ### 1. Clone the repository
 
 ```bash
 git clone https://github.com/IBM/vLLM-Hook.git
-cd vLLm.hook
+cd vLLM-Hook
 ```
 
-### 2. (Optional) Create an environment 
+### 2. Create a virtual environment and install
 
 ```bash
-conda create -n vllm_hook_env
-conda activate vllm_hook_env
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 ```
 
-### 3. Install the plugin and dependencies
-
-```bash
-pip install -r requirement.txt
-pip install -e vllm_hook_plugins
-```
+This installs `vllm-hook-plugins` along with its declared dependencies (`vllm`, `torch`, `numpy`, `pydantic`, `zstandard`).
 
 ---
 
 ## 📕 Notebook Setup 
 
-If you plan to use the notebooks under `notebooks/`, you may need to register your environment as a Jupyter kernel:
+If you plan to use the notebooks under `notebooks/`, register the environment as a Jupyter kernel:
 
 ```bash
-pip install ipykernel
+uv pip install ipykernel
 python -m ipykernel install --user --name vllm_hook_env --display-name "vllm_hook_env"
 ```
 
